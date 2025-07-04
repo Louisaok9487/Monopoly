@@ -558,14 +558,32 @@
                 return;
             }
             if (player.isAI) {
-                const propertiesInGroup = boardSpaces.filter(s => s.group === space.group);
-                const ownedInGroup = player.properties.filter(p => p.group === space.group).length;
-                const valueMultiplier = 1 + (ownedInGroup / propertiesInGroup.length);
-                if (player.money > space.price * 1.5 && Math.random() < (0.5 * valueMultiplier)) {
-                    buyProperty(player, space);
-                    showAutoModal("AI Purchase", `${player.name} bought ${space.name} for $${space.price}.`, 1200, nextTurn);
+                // Aggressive AI: Will almost always buy if they can afford it.
+                const canAfford = player.money >= space.price;
+                
+                // They will only have a small chance of declining if the purchase would leave them with critically low cash.
+                const criticallyLowCash = 150; 
+                
+                if (canAfford) {
+                    if (player.money - space.price > criticallyLowCash) {
+                        // If they have a good cash reserve after buying, they always buy.
+                        buyProperty(player, space);
+                        showAutoModal("AI Purchase", `${player.name} bought ${space.name} for $${space.price}.`, 1200, nextTurn);
+                    } else {
+                        // If cash will be low, there's still a very high chance they buy it anyway.
+                        // This makes them aggressive and willing to take risks.
+                        if (Math.random() < 0.85) { // 85% chance to buy even with low cash
+                             buyProperty(player, space);
+                             showAutoModal("AI Purchase", `${player.name} bought ${space.name} for $${space.price}.`, 1200, nextTurn);
+                        } else {
+                             // This is the rare case where they decline.
+                             showAutoModal("AI Declines", `${player.name} decided not to buy ${space.name} to preserve cash.`, 1200, nextTurn);
+                        }
+                    }
                 } else {
-                    showAutoModal("AI Declines", `${player.name} decided not to buy ${space.name}.`, 1200, nextTurn);
+                    // This case should not be hit because of the check at the function start.
+                    // Included as a fallback.
+                     showAutoModal("Not Enough Money", `${player.name} can't afford ${space.name}.`, 1200, nextTurn);
                 }
             } else {
                 showModal("For Sale", `Would you like to buy ${space.name} for $${space.price}?`, [
