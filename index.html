@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Emoji Monopoly</title>
+    <title>Enhanced Emoji Monopoly</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
@@ -24,7 +24,7 @@
             display: flex;
             flex-direction: column;
             text-align: center;
-            font-size: 0.65rem; /* Slightly smaller for more space */
+            font-size: 0.65rem;
             line-height: 1.2;
             position: relative;
         }
@@ -65,10 +65,13 @@
             justify-content: center;
             align-items: center;
             font-size: 32px;
-            transition: top 0.075s linear, left 0.075s linear; /* Faster movement */
+            transition: top 0.15s ease-out, left 0.15s ease-out, transform 0.15s ease-in-out;
             z-index: 10;
             border: 3px solid white;
             text-shadow: 0 0 5px black;
+        }
+        .token-hop {
+            transform: translateY(-20px) scale(1.1);
         }
         .player-1-token { background-color: #ef4444; }
         .player-2-token { background-color: #3b82f6; }
@@ -113,6 +116,22 @@
         .tradeable-property:hover {
             background-color: rgba(255, 255, 255, 0.1);
         }
+        .speed-btn.active {
+            background-color: #fbbf24;
+            color: #1b263b;
+        }
+        .trade-modal #modal-content {
+            background-color: #4c1d95; /* Deep purple */
+            border: 2px solid #fde047; /* Gold border */
+        }
+        #emoji-selector {
+            background-color: #415a77;
+            color: white;
+            padding: 0.5rem;
+            border-radius: 0.5rem;
+            font-size: 1.5rem;
+            border: 2px solid #778da9;
+        }
     </style>
 </head>
 <body class="text-white flex items-center justify-center h-screen">
@@ -124,9 +143,23 @@
             <label for="player-name" class="block text-lg mb-2">Enter your name:</label>
             <input type="text" id="player-name" value="You" class="text-black text-center p-2 rounded-md w-full max-w-xs">
         </div>
+        <div class="mb-6">
+            <label for="emoji-selector" class="block text-lg mb-2">Choose your token:</label>
+            <select id="emoji-selector" class="w-full max-w-xs mx-auto">
+                <option value="🚀">🚀 Rocket</option>
+                <option value="🦄">🦄 Unicorn</option>
+                <option value="🎩">🎩 Top Hat</option>
+                <option value="🦖">🦖 T-Rex</option>
+                <option value="🐉">🐉 Dragon</option>
+                <option value="🦁">🦁 Lion</option>
+                <option value="💎">💎 Diamond</option>
+                <option value="💰">💰 Money Bag</option>
+                <option value="🔑">🔑 Key</option>
+                <option value="🏆">🏆 Trophy</option>
+            </select>
+        </div>
         <p class="text-lg mb-2">Select number of AI players:</p>
         <div class="flex justify-center space-x-4">
-            <button onclick="startGame(0)" class="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded">0</button>
             <button onclick="startGame(1)" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded">1</button>
             <button onclick="startGame(2)" class="bg-yellow-500 hover:bg-yellow-600 text-white font-bold py-2 px-4 rounded">2</button>
             <button onclick="startGame(3)" class="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded">3</button>
@@ -145,9 +178,16 @@
                         <div id="dice1" class="dice bg-white rounded-lg flex items-center justify-center p-2"></div>
                         <div id="dice2" class="dice bg-white rounded-lg flex items-center justify-center p-2"></div>
                     </div>
-                    <div class="flex space-x-2">
+                    <div class="flex space-x-2 mb-4">
                         <button id="roll-dice-btn" class="bg-green-500 hover:bg-green-600 text-white font-bold py-3 px-6 rounded-lg text-xl shadow-lg">Roll Dice</button>
                         <button id="manage-prop-btn" class="bg-blue-500 hover:bg-blue-600 text-white font-bold py-3 px-6 rounded-lg text-xl shadow-lg">Manage</button>
+                    </div>
+                     <div class="flex items-center space-x-2">
+                        <span class="text-sm font-semibold">Speed:</span>
+                        <button onclick="setGameSpeed(0.5)" id="speed-0_5" class="speed-btn bg-gray-600 hover:bg-gray-500 text-white font-bold py-1 px-3 rounded">x0.5</button>
+                        <button onclick="setGameSpeed(1.0)" id="speed-1" class="speed-btn bg-gray-600 hover:bg-gray-500 text-white font-bold py-1 px-3 rounded">x1.0</button>
+                        <button onclick="setGameSpeed(2.0)" id="speed-2" class="speed-btn bg-gray-600 hover:bg-gray-500 text-white font-bold py-1 px-3 rounded">x2.0</button>
+                        <button onclick="setGameSpeed(3.0)" id="speed-3" class="speed-btn bg-gray-600 hover:bg-gray-500 text-white font-bold py-1 px-3 rounded">x3.0</button>
                     </div>
                     <div id="turn-indicator" class="mt-4 text-lg font-semibold"></div>
                 </div>
@@ -176,7 +216,7 @@
     <div id="lose-screen" class="hidden fixed inset-0 bg-black bg-opacity-75 flex-col items-center justify-center z-50 text-center">
         <h1 class="text-6xl font-bold text-red-500 z-10">Game Over</h1>
         <p class="text-2xl mt-4 text-white z-10">Don't worry, it's all about the fun. Better luck next time!</p>
-        <button onclick="location.reload()" class="mt-8 bg-blue-500 hover:bg-blue-600 text-white font-bold py-3 px-8 rounded-lg text-2xl z-10">One More Round</button>
+        <button onclick="location.reload()" class="mt-8 bg-blue-500 hover:bg-blue-700 text-white font-bold py-3 px-8 rounded-lg text-2xl z-10">One More Round</button>
     </div>
 
 
@@ -226,31 +266,56 @@
         ];
         
         const chanceCards = [
-            { text: "Advance to GO (Collect $200)", action: (p) => { p.position = 0; updatePlayerMoney(p, 200); } },
-            { text: "Bank pays you dividend of $50", action: (p) => { updatePlayerMoney(p, 50); } },
+            { text: "Advance to GO (Collect $200)", action: (p) => { p.position = 0; updatePlayerMoney(p, 200, false); } },
+            { text: "Bank pays you dividend of $50", action: (p) => { updatePlayerMoney(p, 50, false); } },
             { text: "Go to Jail. Go directly to Jail.", action: (p) => { goToJail(p); } },
-            { text: "Speeding fine $15", action: (p) => { updatePlayerMoney(p, -15); } },
-            { text: "You have won a crossword competition. Collect $100", action: (p) => { updatePlayerMoney(p, 100); } }
+            { text: "Speeding fine $15", action: (p) => { updatePlayerMoney(p, -15, true); } },
+            { text: "You have won a crossword competition. Collect $100", action: (p) => { updatePlayerMoney(p, 100, false); } },
+            { text: "Go back 3 spaces.", action: (p) => { p.position = (p.position - 3 + boardSpaces.length) % boardSpaces.length; } },
+            { text: "Advance to Pall Mall. If you pass GO, collect $200", action: (p) => { advanceTo(p, 'Pall Mall'); } },
+            { text: "Make general repairs on all your property. For each house pay $25, for each hotel pay $100.", action: (p) => { generalRepairs(p, 25, 100); } },
+            { text: "You are assessed for street repairs. $40 per house, $115 per hotel.", action: (p) => { generalRepairs(p, 40, 115); } },
+            { text: "Advance to the nearest Station. If unowned, you may buy it from the Bank.", action: (p) => { advanceToNearest(p, 'station'); } },
+            { text: "Get out of Jail Free. This card may be kept until needed or sold.", action: (p) => { p.getOutOfJailFreeCards = (p.getOutOfJailFreeCards || 0) + 1; } },
+            { text: "Advance to Mayfair.", action: (p) => { p.position = 39; } },
+            { text: "Your building loan matures. Collect $150.", action: (p) => { updatePlayerMoney(p, 150, false); } },
+            { text: "Drunk in charge. Fine $20.", action: (p) => { updatePlayerMoney(p, -20, true); } },
+            { text: "Advance to the nearest Utility. If unowned, you may buy it from the Bank.", action: (p) => { advanceToNearest(p, 'utility'); } }
         ];
 
         const opportunityCards = [
-            { text: "Bank error in your favour. Collect $200", action: (p) => { updatePlayerMoney(p, 200); } },
-            { text: "Doctor's fees. Pay $50", action: (p) => { updatePlayerMoney(p, -50); } },
-            { text: "From sale of stock you get $50", action: (p) => { updatePlayerMoney(p, 50); } },
-            { text: "Holiday fund matures. Receive $100", action: (p) => { updatePlayerMoney(p, 100); } },
+            { text: "Bank error in your favour. Collect $200", action: (p) => { updatePlayerMoney(p, 200, false); } },
+            { text: "Doctor's fees. Pay $50", action: (p) => { updatePlayerMoney(p, -50, true); } },
+            { text: "From sale of stock you get $50", action: (p) => { updatePlayerMoney(p, 50, false); } },
+            { text: "Holiday fund matures. Receive $100", action: (p) => { updatePlayerMoney(p, 100, false); } },
             { text: "It is your birthday. Collect $10 from every player", action: (p, allPlayers) => {
                 let collected = 0;
                 allPlayers.filter(ap => !ap.isBankrupt && ap.id !== p.id).forEach(otherPlayer => {
-                    updatePlayerMoney(otherPlayer, -10);
+                    updatePlayerMoney(otherPlayer, -10, false);
                     collected += 10;
                 });
-                updatePlayerMoney(p, collected);
-            }}
+                updatePlayerMoney(p, collected, false);
+            }},
+            { text: "Income tax refund. Collect $20.", action: (p) => { updatePlayerMoney(p, 20, false); } },
+            { text: "Life insurance matures. Collect $100.", action: (p) => { updatePlayerMoney(p, 100, false); } },
+            { text: "Pay hospital fees of $100.", action: (p) => { updatePlayerMoney(p, -100, true); } },
+            { text: "Pay school fees of $50.", action: (p) => { updatePlayerMoney(p, -50, true); } },
+            { text: "Receive $25 consultancy fee.", action: (p) => { updatePlayerMoney(p, 25, false); } },
+            { text: "You have won second prize in a beauty contest. Collect $10.", action: (p) => { updatePlayerMoney(p, 10, false); } },
+            { text: "You inherit $100.", action: (p) => { updatePlayerMoney(p, 100, false); } },
+            { text: "Pay a $10 fine or take a Chance.", action: (p) => { payOrTakeChance(p, 10); } },
+            { text: "Bank pays you dividend of $50.", action: (p) => { updatePlayerMoney(p, 50, false); } },
+            { text: "Advance to GO (Collect $200)", action: (p) => { p.position = 0; updatePlayerMoney(p, 200, false); } }
         ];
 
+        // --- GAME STATE ---
         let players = [];
         let currentPlayerIndex = 0;
         let gameActive = true;
+        let gameSpeed = 1.0;
+        const BASE_MOVE_DELAY = 150;
+
+        // --- DOM ELEMENTS ---
         const setupScreen = document.getElementById('setup-screen');
         const gameContainer = document.getElementById('game-container');
         const animationContainer = document.getElementById('animation-container');
@@ -267,21 +332,30 @@
         const winScreen = document.getElementById('win-screen');
         const loseScreen = document.getElementById('lose-screen');
 
+        // --- INITIALIZATION ---
         function startGame(aiCount) {
             const playerName = document.getElementById('player-name').value || 'You';
+            const playerEmoji = document.getElementById('emoji-selector').value;
+
+            let allEmojis = ["🚀", "🦄", "🎩", "🦖", "🐉", "🦁", "💎", "💰", "🔑", "🏆", "🤖", "👾", "👽"];
+            let aiEmojis = allEmojis.filter(e => e !== playerEmoji);
+            
             players = [];
-            const playerEmojis = ['😀', '🤖', '👾', '👽'];
             const playerNames = [playerName, 'DeepBlue (AI)', 'AlphaGo (AI)', 'Watson (AI)'];
             const playerColors = ['#ef4444', '#3b82f6', '#22c55e', '#eab308'];
-            players.push({ id: 0, name: playerNames[0], isAI: false, money: 1500, position: 0, properties: [], inJail: false, jailTurns: 0, token: playerEmojis[0], color: playerColors[0], isBankrupt: false });
+            
+            players.push({ id: 0, name: playerNames[0], isAI: false, money: 1500, position: 0, properties: [], inJail: false, jailTurns: 0, token: playerEmoji, color: playerColors[0], isBankrupt: false, getOutOfJailFreeCards: 0 });
+            
             for (let i = 0; i < aiCount; i++) {
-                players.push({ id: i + 1, name: playerNames[i + 1], isAI: true, money: 1500, position: 0, properties: [], inJail: false, jailTurns: 0, token: playerEmojis[i + 1], color: playerColors[i+1], isBankrupt: false });
+                players.push({ id: i + 1, name: playerNames[i + 1], isAI: true, money: 1500, position: 0, properties: [], inJail: false, jailTurns: 0, token: aiEmojis[i], color: playerColors[i+1], isBankrupt: false, getOutOfJailFreeCards: 0 });
             }
+
             setupScreen.style.display = 'none';
             gameContainer.classList.remove('hidden');
             gameContainer.classList.add('flex');
             createBoard();
             createPlayerTokens();
+            setGameSpeed(1.0);
             updatePlayerInfoPanel();
             updateAllUI();
             startTurn();
@@ -321,38 +395,58 @@
                 tokenEl.className = `player-token player-${player.id + 1}-token`;
                 tokenEl.textContent = player.token;
                 gameBoard.appendChild(tokenEl);
-                updatePlayerTokenPosition(player);
+                updatePlayerTokenPosition(player, false);
             });
         }
 
-        function updatePlayerTokenPosition(player) {
-            const tokenEl = document.getElementById(`player-${player.id}-token`);
-            const spaceEl = document.getElementById(`space-${player.position}`);
-            if (!spaceEl || !tokenEl) return;
-            const offset = player.id * 8 - 12;
-            tokenEl.style.top = `${spaceEl.offsetTop + (spaceEl.offsetHeight / 2) - (tokenEl.offsetHeight / 2)}px`;
-            tokenEl.style.left = `${spaceEl.offsetLeft + (spaceEl.offsetWidth / 2) - (tokenEl.offsetWidth / 2) + offset}px`;
-        }
-
-        function startTurn() {
+        // --- GAME FLOW & TURN MANAGEMENT ---
+        async function startTurn() {
             if (!gameActive) return;
             const currentPlayer = players[currentPlayerIndex];
             turnIndicator.textContent = `${currentPlayer.name}'s Turn`;
             document.querySelectorAll('.player-info-card').forEach(card => card.classList.remove('ring-2', 'ring-yellow-400'));
             const currentPlayerCard = document.getElementById(`player-info-${currentPlayer.id}`);
             if(currentPlayerCard) currentPlayerCard.classList.add('ring-2', 'ring-yellow-400');
+            
             if (currentPlayer.inJail) {
                 handleJailTurn(currentPlayer);
                 return;
             }
-            if (currentPlayer.isAI) {
-                manageAIProperties(currentPlayer);
-            }
+
             rollDiceBtn.disabled = currentPlayer.isAI;
             managePropBtn.disabled = currentPlayer.isAI;
             rollDiceBtn.classList.toggle('opacity-50', currentPlayer.isAI);
             managePropBtn.classList.toggle('opacity-50', currentPlayer.isAI);
-            if (currentPlayer.isAI) setTimeout(aiTurn, 750);
+
+            if (currentPlayer.isAI) {
+                await sleep(500);
+                await manageAIProperties(currentPlayer);
+                await evaluateAITrades(currentPlayer);
+                aiTurn();
+            }
+        }
+
+        function nextTurn() {
+            if (!gameActive) return;
+            modal.classList.add('hidden');
+            
+            const activePlayers = players.filter(p => !p.isBankrupt);
+            if (activePlayers.length <= 1) {
+                endGame(activePlayers);
+                return;
+            }
+
+            do {
+                currentPlayerIndex = (currentPlayerIndex + 1) % players.length;
+            } while (players[currentPlayerIndex].isBankrupt);
+
+            setTimeout(startTurn, 250);
+        }
+
+        function aiTurn() {
+            const d1 = Math.floor(Math.random() * 6) + 1;
+            const d2 = Math.floor(Math.random() * 6) + 1;
+            animateDice(d1, d2, () => movePlayer(d1 + d2));
         }
 
         rollDiceBtn.addEventListener('click', () => {
@@ -366,6 +460,418 @@
             animateDice(d1, d2, () => movePlayer(d1 + d2));
         });
 
+        // --- PLAYER MOVEMENT & ACTIONS ---
+        function updatePlayerTokenPosition(player, animate = true) {
+            const tokenEl = document.getElementById(`player-${player.id}-token`);
+            const spaceEl = document.getElementById(`space-${player.position}`);
+            if (!spaceEl || !tokenEl) return;
+            const offset = player.id * 8 - 12;
+            
+            let moveDelay = BASE_MOVE_DELAY / gameSpeed;
+            if (gameSpeed === 0.5) moveDelay *= 0.75; // 25% faster move at 0.5x speed
+
+            if (animate) {
+                tokenEl.style.transitionDuration = `${moveDelay / 1000}s`;
+                tokenEl.classList.add('token-hop');
+                setTimeout(() => {
+                    tokenEl.style.top = `${spaceEl.offsetTop + (spaceEl.offsetHeight / 2) - (tokenEl.offsetHeight / 2)}px`;
+                    tokenEl.style.left = `${spaceEl.offsetLeft + (spaceEl.offsetWidth / 2) - (tokenEl.offsetWidth / 2) + offset}px`;
+                    setTimeout(() => tokenEl.classList.remove('token-hop'), moveDelay);
+                }, moveDelay / 2);
+            } else {
+                 tokenEl.style.top = `${spaceEl.offsetTop + (spaceEl.offsetHeight / 2) - (tokenEl.offsetHeight / 2)}px`;
+                 tokenEl.style.left = `${spaceEl.offsetLeft + (spaceEl.offsetWidth / 2) - (tokenEl.offsetWidth / 2) + offset}px`;
+            }
+        }
+
+        async function movePlayer(steps) {
+            const player = players[currentPlayerIndex];
+            const originalPosition = player.position;
+            for (let i = 0; i < steps; i++) {
+                player.position = (player.position + 1) % boardSpaces.length;
+                updatePlayerTokenPosition(player);
+                
+                let moveDelay = BASE_MOVE_DELAY / gameSpeed;
+                if (gameSpeed === 0.5) moveDelay *= 0.75; // 25% faster move at 0.5x speed
+                await sleep(moveDelay);
+
+                if (player.position === 0 && i < steps -1) { // Passed GO mid-move
+                     updatePlayerMoney(player, 200, false);
+                     showAutoModal("Passed GO", `${player.name} collected $200.`, 1200);
+                     await sleep(1200);
+                }
+            }
+            handleLandedSpace();
+        }
+
+        function handleLandedSpace() {
+            modal.classList.add('hidden');
+            const player = players[currentPlayerIndex];
+            const space = boardSpaces[player.position];
+            const owner = getPropertyOwner(space);
+            if (space.type === "property" || space.type === "station" || space.type === "utility") {
+                if (!owner) promptBuyProperty(player, space);
+                else if (owner.id !== player.id) payRent(player, space, owner);
+                else nextTurn();
+            } else {
+                handleSpecialSpace(player, space);
+            }
+        }
+
+        function handleSpecialSpace(player, space) {
+            switch(space.type) {
+                case "go-to-jail":
+                    showAutoModal("Go to Jail!", `${player.name} is now in jail.`, 1200, () => { goToJail(player); nextTurn(); });
+                    break;
+                case "tax":
+                    showAutoModal("Tax", `${player.name} paid $${space.amount} in tax.`, 1200, () => {
+                        updatePlayerMoney(player, -space.amount, true);
+                        if(!player.isBankrupt) nextTurn();
+                    });
+                    break;
+                case "chance": case "opportunity":
+                    drawCard(player, space.type === 'chance' ? chanceCards : opportunityCards, space.name);
+                    break;
+                default:
+                    nextTurn();
+            }
+        }
+        
+        // --- PROPERTY & MONEY ---
+        function updatePlayerMoney(player, amount, canGoBankrupt) {
+            player.money += amount;
+            showMoneyAnimation(player.id, amount);
+            if (canGoBankrupt && player.money < 0) {
+                attemptToAvoidBankruptcy(player);
+            }
+            updateAllUI();
+        }
+
+        function getPropertyOwner(space) {
+            if (!space || !space.price) return null;
+            return players.find(p => p.properties.find(prop => prop.name === space.name));
+        }
+
+        function promptBuyProperty(player, space) {
+            if (player.money < space.price) {
+                showAutoModal("Not Enough Money", `${player.name} can't afford ${space.name}.`, 1200, nextTurn);
+                return;
+            }
+            if (player.isAI) {
+                const propertiesInGroup = boardSpaces.filter(s => s.group === space.group);
+                const ownedInGroup = player.properties.filter(p => p.group === space.group).length;
+                const valueMultiplier = 1 + (ownedInGroup / propertiesInGroup.length);
+                if (player.money > space.price * 1.5 && Math.random() < (0.5 * valueMultiplier)) {
+                    buyProperty(player, space);
+                    showAutoModal("AI Purchase", `${player.name} bought ${space.name} for $${space.price}.`, 1200, nextTurn);
+                } else {
+                    showAutoModal("AI Declines", `${player.name} decided not to buy ${space.name}.`, 1200, nextTurn);
+                }
+            } else {
+                showModal("For Sale", `Would you like to buy ${space.name} for $${space.price}?`, [
+                    { text: "Buy", className: 'bg-green-500', action: () => { buyProperty(player, space); nextTurn(); } },
+                    { text: "Decline", className: 'bg-red-500', action: nextTurn }
+                ]);
+            }
+        }
+
+        function buyProperty(player, space) {
+            const newProperty = {...space, houses: 0};
+            player.properties.push(newProperty);
+            updatePlayerMoney(player, -space.price, true);
+            if(player.isBankrupt) return;
+            updateAllUI();
+        }
+
+        function payRent(player, space, owner) {
+            const ownedProperty = owner.properties.find(p => p.name === space.name);
+            let rent = ownedProperty.rent;
+            if (ownedProperty.type === 'property' && hasFullSet(owner, ownedProperty.group)) {
+                rent = ownedProperty.rent * 2;
+                if(ownedProperty.houses > 0) {
+                    rent = ownedProperty.rentWithHouses[ownedProperty.houses - 1];
+                }
+            } else if (ownedProperty.type === 'utility') {
+                const diceRoll = (Math.floor(Math.random() * 6) + 1) + (Math.floor(Math.random() * 6) + 1);
+                const ownerUtilities = owner.properties.filter(p => p.type === 'utility').length;
+                rent = diceRoll * (ownerUtilities === 2 ? 10 : 4);
+            } else if (ownedProperty.type === 'station') {
+                const ownerStations = owner.properties.filter(p => p.type === 'station').length;
+                rent = ownedProperty.rent * Math.pow(2, ownerStations - 1);
+            }
+            
+            const message = `${player.name} paid $${rent} rent to ${owner.name} for ${space.name}.`;
+            showAutoModal("Rent Paid", message, 1200, () => {
+                updatePlayerMoney(player, -rent, true);
+                if (!player.isBankrupt) {
+                    updatePlayerMoney(owner, rent, false);
+                    nextTurn();
+                }
+            });
+        }
+        
+        // --- BANKRUPTCY LOGIC ---
+        function attemptToAvoidBankruptcy(player) {
+            let raised = 0;
+            const propertiesByGroup = player.properties.filter(p => p.group).reduce((acc, p) => {
+                if (!acc[p.group]) acc[p.group] = [];
+                acc[p.group].push(p);
+                return acc;
+            }, {});
+
+            while (player.money < 0) {
+                let soldSomething = false;
+                // 1. Sell houses evenly from most expensive groups
+                let propertiesWithHouses = player.properties.filter(p => p.houses > 0).sort((a,b) => b.houseCost - a.houseCost);
+                if (propertiesWithHouses.length > 0) {
+                    const propToSellFrom = propertiesWithHouses[0];
+                    const sellPrice = propToSellFrom.houseCost / 2;
+                    propToSellFrom.houses--;
+                    player.money += sellPrice;
+                    raised += sellPrice;
+                    soldSomething = true;
+                    updateAllUI();
+                    continue;
+                }
+
+                // 2. Sell properties
+                if (player.properties.length > 0) {
+                    // Sell properties that are not part of a set first, cheapest first
+                    let propToSell = player.properties
+                        .filter(p => !p.group || !hasFullSet(player, p.group))
+                        .sort((a,b) => a.price - b.price)[0];
+                    
+                    // If no single properties, break up a set, cheapest first
+                    if (!propToSell) {
+                         propToSell = player.properties.sort((a,b) => a.price - b.price)[0];
+                    }
+
+                    const sellPrice = propToSell.price / 2;
+                    player.money += sellPrice;
+                    raised += sellPrice;
+                    player.properties = player.properties.filter(p => p.name !== propToSell.name);
+                    soldSomething = true;
+                    updateAllUI();
+                    continue;
+                }
+
+                if (!soldSomething) break;
+            }
+
+            if (player.money < 0) {
+                handleBankruptcy(player);
+            } else {
+                showAutoModal("Debt Paid!", `${player.name} sold assets to raise $${raised} and avoided bankruptcy!`, 1500, nextTurn);
+            }
+        }
+
+        function handleBankruptcy(player) {
+            player.isBankrupt = true;
+            document.getElementById(`player-${player.id}-token`).classList.add('hidden');
+            player.properties.forEach(p => p.houses = 0);
+            player.properties = [];
+            showAutoModal("Bankrupt!", `<b>${player.name}</b> has gone bankrupt! All assets are returned to the bank.`, 2000, nextTurn);
+            updateAllUI();
+        }
+
+        // --- AI LOGIC (Building & Trading) ---
+        async function manageAIProperties(player) {
+            const propertiesByGroup = player.properties.filter(p => p.group).reduce((acc, p) => {
+                if (!acc[p.group]) acc[p.group] = [];
+                acc[p.group].push(p);
+                return acc;
+            }, {});
+
+            for (const groupName in propertiesByGroup) {
+                if (hasFullSet(player, groupName)) {
+                    const group = propertiesByGroup[groupName];
+                    const houseCost = group[0].houseCost;
+                    while (player.money > houseCost * 2.5) { // Be a bit more conservative
+                         const minHouses = Math.min(...group.map(p => p.houses));
+                         if (minHouses >= 5) break;
+                         let propertyToBuildOn = group.find(p => p.houses === minHouses);
+                         if (propertyToBuildOn) {
+                             updatePlayerMoney(player, -houseCost, false);
+                             propertyToBuildOn.houses++;
+                             showAutoModal("AI Builds", `${player.name} built a ${propertyToBuildOn.houses === 5 ? 'hotel' : 'house'} on ${propertyToBuildOn.name}.`, 1200);
+                             updateAllUI();
+                             await sleep(500);
+                         } else {
+                             break;
+                         }
+                    }
+                }
+            }
+        }
+
+        async function evaluateAITrades(player) {
+            if (players.filter(p => p.isAI && !p.isBankrupt).length < 2) return;
+
+            const potentialGroups = getPotentialMonopolies(player);
+            for (const group of potentialGroups) {
+                const missingPropNames = getMissingProperties(player, group.groupName);
+                for (const missingPropName of missingPropNames) {
+                    const targetProperty = boardSpaces.find(s => s.name === missingPropName);
+                    const owner = players.find(p => p.isAI && p.id !== player.id && !p.isBankrupt && p.properties.some(prop => prop.name === missingPropName));
+                    
+                    if (owner && !hasFullSet(owner, group.groupName)) {
+                        const offerPrice = Math.round(targetProperty.price * (1.2 + Math.random() * 0.5));
+                        
+                        // AI is more likely to trade if it needs cash or the offer is good
+                        if ((owner.money < 400 && offerPrice > targetProperty.price * 1.2) || offerPrice > targetProperty.price * 1.5) {
+                             showAutoModal("AI Trade Offer", `${player.name} offers to buy ${targetProperty.name} from ${owner.name} for $${offerPrice}.`, 1500, null, { modalType: 'trade' });
+                             await sleep(1500);
+
+                             const isGoodDealForOwner = offerPrice > targetProperty.price * 1.4 || (owner.money < 200 && offerPrice > targetProperty.price * 1.1);
+                             if (isGoodDealForOwner && player.money >= offerPrice) {
+                                 executeTrade(player, owner, targetProperty, offerPrice);
+                                 showAutoModal("Trade Accepted!", `${owner.name} sold ${targetProperty.name} to ${player.name} for $${offerPrice}.`, 1500, null, { modalType: 'trade' });
+                                 await sleep(1500);
+                                 return;
+                             } else {
+                                 showAutoModal("Trade Rejected", `${owner.name} rejected the offer.`, 1200, null, { modalType: 'trade' });
+                                 await sleep(1200);
+                             }
+                        }
+                    }
+                }
+            }
+        }
+        
+        // --- UI & MODALS ---
+        function updateAllUI() {
+            updatePlayerInfoPanel();
+            players.forEach(p => {
+                if (!p.isBankrupt) updatePlayerTokenPosition(p, false);
+            });
+            updatePropertyOwnership();
+        }
+
+        function updatePlayerInfoPanel() {
+            playerInfoPanel.innerHTML = '';
+            players.forEach(player => {
+                const playerDiv = document.createElement('div');
+                playerDiv.id = `player-info-${player.id}`;
+                playerDiv.className = `player-info-card panel-bg border border-gray-700 p-3 rounded-lg shadow-md transition-all duration-300 relative ${player.isBankrupt ? 'opacity-50' : ''}`;
+                
+                const propertiesList = player.properties.sort((a,b) => (a.group || '').localeCompare(b.group || '')).map(p => {
+                    let rentInfo = '';
+                    if (p.type === 'property') {
+                        let currentRent = p.rent;
+                        if(hasFullSet(player, p.group)) {
+                            currentRent = p.houses > 0 ? p.rentWithHouses[p.houses - 1] : p.rent * 2;
+                        }
+                        rentInfo = `<span class="text-green-400 ml-auto">$${currentRent}</span>`;
+                    } else if (p.type === 'station') {
+                        const numStations = player.properties.filter(prop => prop.type === 'station').length;
+                        const currentRent = p.rent * Math.pow(2, numStations - 1);
+                        rentInfo = `<span class="text-green-400 ml-auto">$${currentRent}</span>`;
+                    }
+                    const tradeableClass = player.isAI && !players[0].isBankrupt ? 'tradeable-property' : '';
+                    return `<li class="flex items-center text-sm p-1 rounded-md ${tradeableClass}" data-owner-id="${player.id}" data-prop-name="${p.name}">
+                        <span class="w-3 h-3 rounded-sm mr-2 flex-shrink-0" style="background-color:${p.color || '#808080'}; border: 1px solid #ccc;"></span>
+                        ${p.name} ${rentInfo}
+                    </li>`;
+                }).join('');
+
+                playerDiv.innerHTML = `
+                    <div class="flex justify-between items-center mb-2">
+                        <div class="flex items-center">
+                           <div class="w-4 h-4 rounded-full mr-2" style="background-color: ${player.color}"></div>
+                           <h3 class="text-lg font-bold ${player.isBankrupt ? 'line-through' : ''}">${player.token} ${player.name}</h3>
+                        </div>
+                        <span class="text-xl font-semibold text-green-400">$${player.money < 0 ? 0 : player.money}</span>
+                    </div>
+                    <div>
+                        <div class="flex justify-between font-semibold text-gray-400"><span class="underline">Properties</span><span class="underline">Rent</span></div>
+                        <ul class="mt-1 space-y-1">${propertiesList || '<li class="text-sm text-gray-500">None</li>'}</ul>
+                    </div>`;
+                playerInfoPanel.appendChild(playerDiv);
+            });
+        }
+        
+        function updatePropertyOwnership() {
+            boardSpaces.forEach((space, i) => {
+                if(space.type === 'property' || space.type === 'station' || space.type === 'utility') {
+                    const spaceEl = document.getElementById(`space-${i}`);
+                    if (!spaceEl) return;
+                    const owner = getPropertyOwner(space);
+                    let colorBar = spaceEl.querySelector('.color-bar');
+                    if (!colorBar && space.color) {
+                         colorBar = document.createElement('div');
+                         colorBar.className = 'color-bar';
+                         colorBar.style.backgroundColor = space.color;
+                         spaceEl.prepend(colorBar);
+                    }
+                    if(colorBar) colorBar.innerHTML = '';
+                    const existingIndicator = spaceEl.querySelector('.owner-indicator');
+                    if (existingIndicator) existingIndicator.remove();
+                    if(owner) {
+                        const ownedProperty = owner.properties.find(p => p.name === space.name);
+                        const ownerIndicator = document.createElement('div');
+                        ownerIndicator.className = `owner-indicator absolute top-1 right-1 w-5 h-5 rounded-full border-2 border-white`;
+                        ownerIndicator.style.backgroundColor = owner.color;
+                        ownerIndicator.title = `Owned by: ${owner.name}`;
+                        spaceEl.appendChild(ownerIndicator);
+                        if(ownedProperty.type === 'property' && ownedProperty.houses > 0) {
+                            let houseIcons = ownedProperty.houses === 5 ? '🏨' : '🏠'.repeat(ownedProperty.houses);
+                            colorBar.innerHTML = `<span class="house-indicator">${houseIcons}</span>`;
+                        }
+                    }
+                }
+            });
+        }
+
+        // --- UTILITY FUNCTIONS ---
+        function sleep(ms) {
+            return new Promise(resolve => setTimeout(resolve, ms));
+        }
+
+        function setGameSpeed(speed) {
+            gameSpeed = speed;
+            document.querySelectorAll('.speed-btn').forEach(btn => btn.classList.remove('active'));
+            document.getElementById(`speed-${speed.toString().replace('.','_')}`).classList.add('active');
+        }
+        window.setGameSpeed = setGameSpeed;
+
+        function hasFullSet(player, groupName) {
+            if (!groupName) return false;
+            const groupProperties = player.properties.filter(p => p.group === groupName);
+            const totalInGroup = boardSpaces.filter(s => s.group === groupName).length;
+            return groupProperties.length === totalInGroup;
+        }
+
+        function getPotentialMonopolies(player) {
+            const groups = {};
+            player.properties.filter(p => p.group).forEach(p => {
+                if (!groups[p.group]) groups[p.group] = 0;
+                groups[p.group]++;
+            });
+            const potential = [];
+            for (const groupName in groups) {
+                const totalInGroup = boardSpaces.filter(s => s.group === groupName).length;
+                if (groups[groupName] >= totalInGroup - 1 && groups[groupName] < totalInGroup) {
+                    potential.push({ groupName, count: groups[groupName] });
+                }
+            }
+            return potential;
+        }
+
+        function getMissingProperties(player, groupName) {
+            const ownedProps = player.properties.filter(p => p.group === groupName).map(p => p.name);
+            const allPropsInGroup = boardSpaces.filter(s => s.group === groupName).map(s => s.name);
+            return allPropsInGroup.filter(name => !ownedProps.includes(name));
+        }
+
+        function endGame(activePlayers) {
+            gameActive = false;
+            if (activePlayers.length === 1 && !activePlayers[0].isAI) {
+                triggerWin();
+            } else {
+                triggerLose();
+            }
+        }
+        
         managePropBtn.addEventListener('click', () => {
             const player = players[currentPlayerIndex];
             if(player.isAI) return;
@@ -400,53 +906,6 @@
             });
         }
 
-        async function movePlayer(steps) {
-            const player = players[currentPlayerIndex];
-            const originalPosition = player.position;
-            for (let i = 0; i < steps; i++) {
-                player.position = (player.position + 1) % boardSpaces.length;
-                updatePlayerTokenPosition(player);
-                await new Promise(resolve => setTimeout(resolve, 75));
-            }
-            if (player.position < originalPosition) {
-                updatePlayerMoney(player, 200);
-                showAutoModal("Passed GO", `${player.name} collected $200.`, 1200, handleLandedSpace);
-            } else {
-                handleLandedSpace();
-            }
-        }
-
-        function handleLandedSpace() {
-            modal.classList.add('hidden');
-            const player = players[currentPlayerIndex];
-            const space = boardSpaces[player.position];
-            const owner = getPropertyOwner(space);
-            if (space.type === "property" || space.type === "station" || space.type === "utility") {
-                if (!owner) promptBuyProperty(player, space);
-                else if (owner.id !== player.id) payRent(player, space, owner);
-                else nextTurn();
-            } else {
-                handleSpecialSpace(player, space);
-            }
-        }
-        
-        function handleSpecialSpace(player, space) {
-            switch(space.type) {
-                case "go-to-jail":
-                    showAutoModal("Go to Jail!", `${player.name} is now in jail.`, 1200, () => { goToJail(player); nextTurn(); });
-                    break;
-                case "tax":
-                    updatePlayerMoney(player, -space.amount);
-                    showAutoModal("Tax", `${player.name} paid $${space.amount} in tax.`, 1200, nextTurn);
-                    break;
-                case "chance": case "opportunity":
-                    drawCard(player, space.type === 'chance' ? chanceCards : opportunityCards, space.name);
-                    break;
-                default:
-                    nextTurn();
-            }
-        }
-
         function goToJail(player) {
             player.position = 10;
             player.inJail = true;
@@ -454,179 +913,18 @@
             updatePlayerTokenPosition(player);
             updateAllUI();
         }
-        
-        function getPropertyOwner(space) {
-            if (!space || !space.price) return null;
-            return players.find(p => p.properties.find(prop => prop.name === space.name));
-        }
 
-        function promptBuyProperty(player, space) {
-            if (player.money < space.price) {
-                showAutoModal("Not Enough Money", `${player.name} doesn't have enough money to buy ${space.name}.`, 1200, nextTurn);
-                return;
+        function showModal(title, body, buttons = [], options = {}) {
+            modal.className = 'fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 p-4'; // Reset classes
+            if (options.modalType === 'trade') {
+                modal.classList.add('trade-modal');
             }
-            if (player.isAI) {
-                if (player.money > space.price + 200) {
-                    buyProperty(player, space);
-                    showAutoModal("AI Purchase", `${player.name} bought ${space.name} for $${space.price}.`, 1200, nextTurn);
-                } else {
-                    showAutoModal("AI Declines", `${player.name} decided not to buy ${space.name}.`, 1200, nextTurn);
-                }
-            } else {
-                showModal("For Sale", `Would you like to buy ${space.name} for $${space.price}?`, [
-                    { text: "Buy", className: 'bg-green-500', action: () => { buyProperty(player, space); nextTurn(); } },
-                    { text: "Decline", className: 'bg-red-500', action: nextTurn }
-                ]);
-            }
-        }
-
-        function buyProperty(player, space) {
-            const newProperty = {...space, houses: 0};
-            player.properties.push(newProperty);
-            updatePlayerMoney(player, -space.price);
-        }
-
-        function payRent(player, space, owner) {
-            const ownedProperty = owner.properties.find(p => p.name === space.name);
-            let rent = ownedProperty.rent;
-            if (ownedProperty.type === 'property' && ownedProperty.houses > 0) {
-                rent = ownedProperty.rentWithHouses[ownedProperty.houses - 1];
-            } else if (ownedProperty.type === 'utility') {
-                const diceRoll = (Math.floor(Math.random() * 6) + 1) + (Math.floor(Math.random() * 6) + 1);
-                const ownerUtilities = owner.properties.filter(p => p.type === 'utility').length;
-                rent = diceRoll * (ownerUtilities === 2 ? 10 : 4);
-            } else if (ownedProperty.type === 'station') {
-                const ownerStations = owner.properties.filter(p => p.type === 'station').length;
-                rent = ownedProperty.rent * Math.pow(2, ownerStations - 1);
-            }
-            
-            updatePlayerMoney(player, -rent);
-            updatePlayerMoney(owner, rent);
-
-            const message = `${player.name} paid $${rent} rent to ${owner.name} for ${space.name}.`;
-            showAutoModal("Rent Paid", message, 1200, nextTurn);
-        }
-
-        function nextTurn() {
-            if (!gameActive) return;
-            modal.classList.add('hidden');
-            
-            const activePlayers = players.filter(p => !p.isBankrupt);
-            if (activePlayers.length <= 1) {
-                if (activePlayers.length === 1 && !activePlayers[0].isAI) {
-                    triggerWin();
-                } else {
-                    triggerLose();
-                }
-                return;
-            }
-
-            do {
-                currentPlayerIndex = (currentPlayerIndex + 1) % players.length;
-            } while (players[currentPlayerIndex].isBankrupt);
-
-            setTimeout(startTurn, 250);
-        }
-
-        function aiTurn() {
-            const d1 = Math.floor(Math.random() * 6) + 1;
-            const d2 = Math.floor(Math.random() * 6) + 1;
-            animateDice(d1, d2, () => movePlayer(d1 + d2));
-        }
-        
-        function updateAllUI() {
-            updatePlayerInfoPanel();
-            players.forEach(p => {
-                if (!p.isBankrupt) updatePlayerTokenPosition(p);
-            });
-            updatePropertyOwnership();
-        }
-
-        function updatePlayerInfoPanel() {
-            playerInfoPanel.innerHTML = '';
-            players.forEach(player => {
-                const playerDiv = document.createElement('div');
-                playerDiv.id = `player-info-${player.id}`;
-                playerDiv.className = `player-info-card panel-bg border border-gray-700 p-3 rounded-lg shadow-md transition-all duration-300 relative ${player.isBankrupt ? 'opacity-50' : ''}`;
-                
-                const propertiesList = player.properties.sort((a,b) => (a.group || '').localeCompare(b.group || '')).map(p => {
-                    let rentInfo = '';
-                    if (p.type === 'property') {
-                        const currentRent = p.houses > 0 ? p.rentWithHouses[p.houses - 1] : p.rent;
-                        rentInfo = `<span class="text-green-400 ml-auto">$${currentRent}</span>`;
-                    } else if (p.type === 'station') {
-                        const numStations = player.properties.filter(prop => prop.type === 'station').length;
-                        const currentRent = p.rent * Math.pow(2, numStations - 1);
-                        rentInfo = `<span class="text-green-400 ml-auto">$${currentRent}</span>`;
-                    }
-                    const tradeableClass = player.isAI ? 'tradeable-property' : '';
-                    return `<li class="flex items-center text-sm p-1 rounded-md ${tradeableClass}" data-owner-id="${player.id}" data-prop-name="${p.name}">
-                        <span class="w-3 h-3 rounded-sm mr-2 flex-shrink-0" style="background-color:${p.color || '#808080'}; border: 1px solid #ccc;"></span>
-                        ${p.name} ${rentInfo}
-                    </li>`;
-                }).join('');
-
-                playerDiv.innerHTML = `
-                    <div class="flex justify-between items-center mb-2">
-                        <div class="flex items-center">
-                           <div class="w-4 h-4 rounded-full mr-2" style="background-color: ${player.color}"></div>
-                           <h3 class="text-lg font-bold ${player.isBankrupt ? 'line-through' : ''}">${player.token} ${player.name}</h3>
-                        </div>
-                        <span class="text-xl font-semibold text-green-400">$${player.money < 0 ? 0 : player.money}</span>
-                    </div>
-                    <div>
-                        <div class="flex justify-between font-semibold text-gray-400"><span class="underline">Properties</span><span class="underline">Rent</span></div>
-                        <ul class="mt-1 space-y-1">${propertiesList || '<li class="text-sm text-gray-500">None</li>'}</ul>
-                    </div>`;
-                playerInfoPanel.appendChild(playerDiv);
-            });
-        }
-        
-        playerInfoPanel.addEventListener('click', (e) => {
-            const propLi = e.target.closest('.tradeable-property');
-            if (propLi && !players[currentPlayerIndex].isAI) {
-                const ownerId = parseInt(propLi.dataset.ownerId);
-                const propName = propLi.dataset.propName;
-                initiateTrade(ownerId, propName);
-            }
-        });
-
-        function updatePropertyOwnership() {
-            boardSpaces.forEach((space, i) => {
-                if(space.type === 'property' || space.type === 'station' || space.type === 'utility') {
-                    const spaceEl = document.getElementById(`space-${i}`);
-                    if (!spaceEl) return;
-                    const owner = getPropertyOwner(space);
-                    let colorBar = spaceEl.querySelector('.color-bar');
-                    if (!colorBar && space.color) {
-                         colorBar = document.createElement('div');
-                         colorBar.className = 'color-bar';
-                         colorBar.style.backgroundColor = space.color;
-                         spaceEl.prepend(colorBar);
-                    }
-                    if(colorBar) colorBar.innerHTML = '';
-                    const existingIndicator = spaceEl.querySelector('.owner-indicator');
-                    if (existingIndicator) existingIndicator.remove();
-                    if(owner) {
-                        const ownedProperty = owner.properties.find(p => p.name === space.name);
-                        const ownerIndicator = document.createElement('div');
-                        ownerIndicator.className = `owner-indicator absolute top-1 right-1 w-5 h-5 rounded-full border-2 border-white`;
-                        ownerIndicator.style.backgroundColor = owner.color;
-                        ownerIndicator.title = `Owned by: ${owner.name}`;
-                        spaceEl.appendChild(ownerIndicator);
-                        if(ownedProperty.type === 'property' && ownedProperty.houses > 0) {
-                            let houseIcons = ownedProperty.houses === 5 ? '🏨' : '🏠'.repeat(ownedProperty.houses);
-                            colorBar.innerHTML = `<span class="house-indicator">${houseIcons}</span>`;
-                        }
-                    }
-                }
-            });
-        }
-
-        function showModal(title, body, buttons = [{ text: "Close", className: 'bg-gray-500', action: () => modal.classList.add('hidden') }]) {
-            modalTitle.textContent = title;
+            modalTitle.innerHTML = title;
             modalBody.innerHTML = body;
             modalButtons.innerHTML = '';
+            if (buttons.length === 0 && !options.noCloseButton) {
+                 buttons.push({ text: "Close", className: 'bg-gray-500', action: () => modal.classList.add('hidden') });
+            }
             buttons.forEach(btnInfo => {
                 const button = document.createElement('button');
                 button.textContent = btnInfo.text;
@@ -637,12 +935,15 @@
             modal.classList.remove('hidden');
         }
 
-        function showAutoModal(title, body, duration = 1200, callback) {
-            showModal(title, body, []);
+        function showAutoModal(title, body, duration = 1200, callback, options = {}) {
+            showModal(title, body, [], { ...options, noCloseButton: true });
+            let finalDuration = duration / gameSpeed;
+            if (gameSpeed === 0.5) finalDuration += 1000; // Add 1 second for 0.5x speed
+
             setTimeout(() => {
                 modal.classList.add('hidden');
                 if (callback) callback();
-            }, duration);
+            }, finalDuration);
         }
         
         function handleJailTurn(player) {
@@ -650,46 +951,69 @@
             const endJail = () => {
                 player.inJail = false;
                 player.jailTurns = 0;
-                showAutoModal("You are free!", `${player.name} has left jail.`, 1200, startTurn);
+                showAutoModal("Free!", `${player.name} has left jail.`, 1200, startTurn);
             };
             const payToLeave = () => {
                 if (player.money >= 50) {
-                    updatePlayerMoney(player, -50);
+                    updatePlayerMoney(player, -50, false);
+                    endJail();
+                } else if (player.getOutOfJailFreeCards > 0) {
+                    player.getOutOfJailFreeCards--;
                     endJail();
                 } else {
                     showAutoModal("Not Enough Money", "You don't have $50 to leave jail.", 1200, nextTurn);
                 }
             };
             if (player.jailTurns >= 3) {
-                showAutoModal("Jail time is over", `${player.name} must pay $50 to be released.`, 1200, payToLeave);
+                showAutoModal("Jail time is over", `${player.name} must pay $50 or use a card to be released.`, 1200, payToLeave);
                 return;
             }
+            
+            const buttons = [{ text: "Wait", className: 'bg-red-500', action: nextTurn }];
+            if (player.money >= 50) {
+                buttons.unshift({ text: "Pay $50", className: 'bg-green-500', action: payToLeave });
+            }
+            if (player.getOutOfJailFreeCards > 0) {
+                 buttons.unshift({ text: "Use Card", className: 'bg-yellow-500', action: () => { player.getOutOfJailFreeCards--; endJail(); }});
+            }
+
             if (player.isAI) {
-                if (player.money > 100) {
-                    setTimeout(() => {
-                        updatePlayerMoney(player, -50);
-                        endJail();
-                    }, 500);
+                if (player.getOutOfJailFreeCards > 0) {
+                    setTimeout(() => { player.getOutOfJailFreeCards--; endJail(); }, 500);
+                } else if (player.money > 100) {
+                    setTimeout(() => { updatePlayerMoney(player, -50, false); endJail(); }, 500);
                 } else {
                     setTimeout(() => { showAutoModal("AI Stays in Jail", `${player.name} decides to stay in jail.`, 1200, nextTurn); }, 500);
                 }
             } else {
-                showModal("In Jail", `This is turn ${player.jailTurns} in jail.`, [
-                    { text: "Pay $50", className: 'bg-green-500', action: payToLeave },
-                    { text: "Wait", className: 'bg-red-500', action: nextTurn }
-                ]);
+                showModal("In Jail", `This is turn ${player.jailTurns} in jail.`, buttons);
             }
         }
 
         function drawCard(player, cardDeck, type) {
             const card = cardDeck[Math.floor(Math.random() * cardDeck.length)];
+            
+            // Color code money amounts in the card text
+            let displayText = card.text.replace(/\$(\d+)/g, (match, amount) => {
+                if (card.text.includes("Collect") || card.text.includes("Receive") || card.text.includes("get") || card.text.includes("refund") || card.text.includes("won") || card.text.includes("dividend") || card.text.includes("matures")) {
+                    return `<span class="font-bold text-green-400">${match}</span>`;
+                } else if (card.text.includes("Pay") || card.text.includes("fine") || card.text.includes("fees") || card.text.includes("assessed")) {
+                    return `<span class="font-bold text-red-400">${match}</span>`;
+                }
+                return match;
+            });
+
             const cardAction = () => {
                 const originalPosition = player.position;
                 card.action(player, players);
-                if (player.position !== originalPosition) { updatePlayerTokenPosition(player); handleLandedSpace(); } 
+                if (player.isBankrupt) return;
+                // If player position changed, handle the new space after a delay
+                if (player.position !== originalPosition) { 
+                    setTimeout(handleLandedSpace, 200 / gameSpeed);
+                } 
                 else { nextTurn(); }
             };
-            showAutoModal(type, card.text, 1200, cardAction);
+            showAutoModal(type, displayText, 2000, cardAction);
         }
 
         function showManagePropertiesModal(player) {
@@ -703,10 +1027,9 @@
             bodyContent += '<h4 class="text-xl font-bold border-b border-gray-500 pb-2">Build & Sell Houses</h4>';
             let buildableSets = 0;
             for (const groupName in propertiesByGroup) {
-                const group = propertiesByGroup[groupName];
-                const fullSetSize = boardSpaces.filter(s => s.group === groupName).length;
-                if (group.length === fullSetSize) {
+                if (hasFullSet(player, groupName)) {
                     buildableSets++;
+                    const group = propertiesByGroup[groupName];
                     const houseCost = group[0].houseCost;
                     const canAfford = player.money >= houseCost;
                     const isMaxed = group.every(p => p.houses === 5);
@@ -731,7 +1054,7 @@
             if(player.properties.length > 0) {
                 player.properties.forEach(p => {
                     const sellPrice = Math.floor(p.price / 2);
-                    const propertyInFullSet = p.group && propertiesByGroup[p.group] && propertiesByGroup[p.group].length === boardSpaces.filter(s => s.group === p.group).length;
+                    const propertyInFullSet = p.group && propertiesByGroup[p.group] && hasFullSet(player, p.group);
                     const groupHasHouses = propertyInFullSet && propertiesByGroup[p.group].some(prop => prop.houses > 0);
                     const canSell = !groupHasHouses;
 
@@ -742,17 +1065,17 @@
             }
 
             bodyContent += '</div>';
-            showModal("Manage Properties", bodyContent, [{ text: "Close", className: 'bg-gray-500', action: () => modal.classList.add('hidden') }]);
+            showModal("Manage Properties", bodyContent, [{ text: "Close", className: 'bg-gray-500' }]);
         }
         window.buildHouse = (groupName) => {
             const player = players[currentPlayerIndex];
             const propertyGroup = player.properties.filter(p => p.group === groupName);
             const houseCost = propertyGroup[0].houseCost;
-            if (player.money < houseCost) { showAutoModal("Error", "Not enough money to build.", 1200); return; }
+            if (player.money < houseCost) { return; }
             const minHouses = Math.min(...propertyGroup.map(p => p.houses));
             let propertyToBuildOn = propertyGroup.find(p => p.houses === minHouses);
             if (propertyToBuildOn && propertyToBuildOn.houses < 5) {
-                updatePlayerMoney(player, -houseCost);
+                updatePlayerMoney(player, -houseCost, false);
                 propertyToBuildOn.houses++;
                 updateAllUI();
                 showManagePropertiesModal(player);
@@ -766,7 +1089,7 @@
              if (maxHouses === 0) return;
             let propertyToSellFrom = propertyGroup.find(p => p.houses === maxHouses);
             if(propertyToSellFrom) {
-                updatePlayerMoney(player, houseCost / 2);
+                updatePlayerMoney(player, houseCost / 2, false);
                 propertyToSellFrom.houses--;
                 updateAllUI();
                 showManagePropertiesModal(player);
@@ -778,56 +1101,12 @@
             if(propertyIndex > -1) {
                 const property = player.properties[propertyIndex];
                 const sellPrice = Math.floor(property.price / 2);
-                updatePlayerMoney(player, sellPrice);
+                updatePlayerMoney(player, sellPrice, false);
                 player.properties.splice(propertyIndex, 1);
                 updateAllUI();
                 showManagePropertiesModal(player);
             }
         };
-
-        function manageAIProperties(player) {
-            const propertiesByGroup = player.properties.filter(p => p.group).reduce((acc, p) => {
-                    if (!acc[p.group]) acc[p.group] = [];
-                    acc[p.group].push(p);
-                    return acc;
-                }, {});
-            for (const groupName in propertiesByGroup) {
-                const group = propertiesByGroup[groupName];
-                const fullSetSize = boardSpaces.filter(s => s.group === groupName).length;
-                if (group.length === fullSetSize) {
-                    const houseCost = group[0].houseCost;
-                    if (player.money > houseCost * 3) {
-                         const minHouses = Math.min(...group.map(p => p.houses));
-                         let propertyToBuildOn = group.find(p => p.houses === minHouses);
-                         if (propertyToBuildOn && propertyToBuildOn.houses < 5) {
-                             updatePlayerMoney(player, -houseCost);
-                             propertyToBuildOn.houses++;
-                             showAutoModal("AI Builds", `${player.name} built a ${propertyToBuildOn.houses === 5 ? 'hotel' : 'house'} on ${propertyToBuildOn.name}.`, 1200);
-                             updateAllUI();
-                             return;
-                         }
-                    }
-                }
-            }
-        }
-
-        function updatePlayerMoney(player, amount) {
-            player.money += amount;
-            showMoneyAnimation(player.id, amount);
-            if (player.money < 0) {
-                handleBankruptcy(player);
-            } else {
-                updateAllUI();
-            }
-        }
-
-        function handleBankruptcy(player) {
-            player.isBankrupt = true;
-            document.getElementById(`player-${player.id}-token`).classList.add('hidden');
-            player.properties = []; // Return properties to bank
-            showAutoModal("Bankrupt!", `${player.name} has gone bankrupt!`, 1500);
-            updateAllUI();
-        }
 
         function showMoneyAnimation(playerId, amount) {
             const playerCard = document.getElementById(`player-info-${playerId}`);
@@ -860,66 +1139,130 @@
             loseScreen.classList.add('flex');
         }
 
-        function initiateTrade(ownerId, propName) {
-            const humanPlayer = players[0];
-            const aiPlayer = players.find(p => p.id === ownerId);
-            const property = aiPlayer.properties.find(p => p.name === propName);
+        // --- Trading Logic ---
+        playerInfoPanel.addEventListener('click', (e) => {
+            const propLi = e.target.closest('.tradeable-property');
+            if (propLi && !players[currentPlayerIndex].isAI) {
+                const ownerId = parseInt(propLi.dataset.ownerId);
+                const propName = propLi.dataset.propName;
+                initiateHumanToAITrade(ownerId, propName);
+            }
+        });
 
-            if (!aiPlayer || !property) return;
-
-            // AI Decision Logic
-            const group = property.group;
-            const aiGroupProps = aiPlayer.properties.filter(p => p.group === group);
-            const fullSetSize = boardSpaces.filter(s => s.group === group).length;
-            const humanGroupProps = humanPlayer.properties.filter(p => p.group === group);
-
-            let priceMarkup = 1.5; // Base markup
-            let reason = `${aiPlayer.name} considers your offer...`;
-
-            // If AI has the full set, it won't sell
-            if (aiGroupProps.length === fullSetSize) {
-                showAutoModal("Trade Rejected", `${aiPlayer.name} refuses to sell ${property.name}. It's part of a complete set!`);
+        function executeTrade(buyer, seller, property, price) {
+            if (buyer.money < price) {
+                if (!buyer.isAI) {
+                    showAutoModal("Trade Failed", "You cannot afford this trade.", 1500);
+                }
                 return;
             }
+            const propIndex = seller.properties.findIndex(p => p.name === property.name);
+            if (propIndex === -1) return;
 
-            // If this trade gives the human player a full set, jack up the price
-            if (humanGroupProps.length === fullSetSize - 1) {
+            const tradedProperty = seller.properties[propIndex];
+            seller.properties.splice(propIndex, 1);
+            buyer.properties.push(tradedProperty);
+
+            updatePlayerMoney(buyer, -price, !buyer.isAI);
+            updatePlayerMoney(seller, price, false);
+            
+            modal.classList.add('hidden');
+            updateAllUI();
+        }
+
+        function initiateHumanToAITrade(ownerId, propName) {
+            const humanPlayer = players[0];
+            const aiPlayer = players.find(p => p.id === ownerId);
+            const propertyToBuy = aiPlayer.properties.find(p => p.name === propName);
+
+            if (!aiPlayer || !propertyToBuy || humanPlayer.isBankrupt) return;
+
+            let priceMarkup = 1.5;
+            let reason = `${aiPlayer.name} considers your offer for ${propertyToBuy.name}...`;
+
+            if (hasFullSet(aiPlayer, propertyToBuy.group)) {
+                priceMarkup = 4.0;
+                reason = `${aiPlayer.name} is very reluctant to sell from a complete set!`;
+            }
+
+            const humanGroupProps = humanPlayer.properties.filter(p => p.group === propertyToBuy.group).length;
+            const totalInGroup = boardSpaces.filter(s => s.group === propertyToBuy.group).length;
+            if (humanGroupProps === totalInGroup - 1) {
                 priceMarkup = 3.0;
                 reason = `${aiPlayer.name} knows you want this property badly...`;
             }
 
-            // If AI is low on cash, it's more willing to sell
-            if (aiPlayer.money < 200) {
-                priceMarkup *= 0.9; // 10% discount
+            if (aiPlayer.money < 300) {
+                priceMarkup *= 0.85;
                 reason = `${aiPlayer.name} seems to need the cash...`;
             }
-
-            const finalPrice = Math.round((property.price * priceMarkup) / 10) * 10;
+            
+            priceMarkup = Math.max(1.1, priceMarkup);
+            const finalPrice = Math.round((propertyToBuy.price * priceMarkup) / 10) * 10;
             const canAfford = humanPlayer.money >= finalPrice;
 
             const tradeBody = `
                 <p class="mb-4">${reason}</p>
-                <p class="text-2xl font-bold">Offer: <span class="text-yellow-400">$${finalPrice}</span> for ${property.name}</p>
-                <p class="mt-2 text-sm text-gray-400">Your balance: $${humanPlayer.money}</p>`;
+                <p class="text-2xl font-bold">Offer: <span class="text-yellow-400">$${finalPrice}</span> for ${propertyToBuy.name}</p>
+                <p class="mt-2 text-sm text-gray-400">Your balance: $${humanPlayer.money}</p>
+                ${!canAfford ? '<p class="text-red-400 mt-2">You cannot afford this offer.</p>' : ''}`;
             
             showModal("Trade Offer", tradeBody, [
-                { text: "Accept", className: canAfford ? 'bg-green-600' : 'bg-gray-500', action: canAfford ? () => executeTrade(humanPlayer, aiPlayer, property, finalPrice) : () => {} },
-                { text: "Decline", className: 'bg-red-600', action: () => modal.classList.add('hidden') }
+                { text: "Accept", className: canAfford ? 'bg-green-600' : 'bg-gray-500 cursor-not-allowed', action: canAfford ? () => executeTrade(humanPlayer, aiPlayer, propertyToBuy, finalPrice) : () => {} },
+                { text: "Decline", className: 'bg-red-600' }
             ]);
         }
         
-        function executeTrade(buyer, seller, property, price) {
-            const propIndex = seller.properties.findIndex(p => p.name === property.name);
-            if (propIndex === -1) return;
-
-            seller.properties.splice(propIndex, 1);
-            buyer.properties.push(property);
-
-            updatePlayerMoney(buyer, -price);
-            updatePlayerMoney(seller, price);
-
-            showAutoModal("Trade Complete!", `${buyer.name} bought ${property.name} from ${seller.name} for $${price}.`, 1500);
+        // --- Card Actions ---
+        function advanceTo(player, locationName) {
+            const currentPos = player.position;
+            const targetPos = boardSpaces.findIndex(s => s.name === locationName);
+            if (targetPos < currentPos) {
+                updatePlayerMoney(player, 200, false);
+            }
+            player.position = targetPos;
         }
+
+        function advanceToNearest(player, type) {
+            let currentPos = player.position;
+            let nearestPos = -1;
+            for(let i = 1; i < boardSpaces.length; i++) {
+                const checkPos = (currentPos + i) % boardSpaces.length;
+                if (boardSpaces[checkPos].type === type) {
+                    nearestPos = checkPos;
+                    break;
+                }
+            }
+            if (nearestPos < currentPos) {
+                updatePlayerMoney(player, 200, false);
+            }
+            player.position = nearestPos;
+        }
+
+        function generalRepairs(player, houseCost, hotelCost) {
+            let totalCost = 0;
+            player.properties.forEach(p => {
+                if (p.houses > 0) {
+                    totalCost += p.houses === 5 ? hotelCost : p.houses * houseCost;
+                }
+            });
+            if (totalCost > 0) {
+                updatePlayerMoney(player, -totalCost, true);
+            }
+        }
+        
+        function payOrTakeChance(player, amount) {
+            if (player.isAI) {
+                if(player.money > 200) updatePlayerMoney(player, -amount, true);
+                else drawCard(player, chanceCards, 'Chance');
+            } else {
+                showModal("Choice", `Pay a $${amount} fine or take a Chance card?`, [
+                    {text: `Pay $${amount}`, className: 'bg-red-500', action: () => { updatePlayerMoney(player, -amount, true); nextTurn(); }},
+                    {text: 'Take Chance', className: 'bg-yellow-500', action: () => { modal.classList.add('hidden'); drawCard(player, chanceCards, 'Chance'); }}
+                ]);
+            }
+        }
+
 
         // --- Fireworks ---
         const fireworksCanvas = document.getElementById('fireworks-canvas');
@@ -988,6 +1331,7 @@
                 this.x = x; this.y = y; this.targetX = targetX; this.targetY = targetY;
                 this.color = `hsl(${Math.random() * 360}, 50%, 50%)`;
                 this.velocity = { x: 0, y: 0 }; this.done = false;
+                this.speed = Math.random() * 2 + 3;
             }
             draw() {
                 fireworksCtx.beginPath();
@@ -997,10 +1341,10 @@
             }
             update() {
                 const angle = Math.atan2(this.targetY - this.y, this.targetX - this.x);
-                this.velocity.x = Math.cos(angle) * 5;
-                this.velocity.y = Math.sin(angle) * 5;
+                this.velocity.x = Math.cos(angle) * this.speed;
+                this.velocity.y = Math.sin(angle) * this.speed;
                 this.x += this.velocity.x; this.y += this.velocity.y;
-                if (Math.hypot(this.targetX - this.x, this.targetY - this.y) < 5) {
+                if (Math.hypot(this.targetX - this.x, this.targetY - this.y) < this.speed) {
                     this.done = true;
                 }
             }
