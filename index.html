@@ -3,9 +3,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Enhanced Emoji Monopoly</title>
+    <title>Emoji Monopoly with Sound</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
     <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.7.77/Tone.js"></script>
     <style>
         body {
             font-family: 'Inter', sans-serif;
@@ -188,6 +189,7 @@
                         <button onclick="setGameSpeed(1.0)" id="speed-1" class="speed-btn bg-gray-600 hover:bg-gray-500 text-white font-bold py-1 px-3 rounded">x1.0</button>
                         <button onclick="setGameSpeed(2.0)" id="speed-2" class="speed-btn bg-gray-600 hover:bg-gray-500 text-white font-bold py-1 px-3 rounded">x2.0</button>
                         <button onclick="setGameSpeed(3.0)" id="speed-3" class="speed-btn bg-gray-600 hover:bg-gray-500 text-white font-bold py-1 px-3 rounded">x3.0</button>
+                        <button id="mute-btn" class="bg-purple-600 hover:bg-purple-500 text-white font-bold py-1 px-3 rounded ml-4">🔊</button>
                     </div>
                     <div id="turn-indicator" class="mt-4 text-lg font-semibold"></div>
                 </div>
@@ -221,6 +223,70 @@
 
 
     <script>
+        // --- AUDIO ENGINE ---
+        let audioReady = false;
+        let sfx;
+        let backgroundMusic;
+
+        function initAudio() {
+            // Create synths for sound effects
+            const moveSynth = new Tone.Synth({ oscillator: { type: 'sine' }, envelope: { attack: 0.01, decay: 0.1, sustain: 0.1, release: 0.1 } }).toDestination();
+            const diceSynth = new Tone.NoiseSynth({ noise: { type: 'white' }, envelope: { attack: 0.005, decay: 0.05, sustain: 0 } }).toDestination();
+            const cashSynth = new Tone.FMSynth({ harmonicity: 2, modulationIndex: 3, envelope: { attack: 0.01, decay: 0.2, sustain: 0.1, release: 0.2 } }).toDestination();
+            const buySynth = new Tone.Synth({ oscillator: { type: 'triangle' }, envelope: { attack: 0.01, decay: 0.2, sustain: 0, release: 0.2 } }).toDestination();
+            const rentSynth = new Tone.Synth({ oscillator: { type: 'sawtooth' }, envelope: { attack: 0.01, decay: 0.3, sustain: 0, release: 0.1 } }).toDestination();
+            const jailSynth = new Tone.Synth({ oscillator: { type: 'pulse', width: 0.2 }, envelope: { attack: 0.1, decay: 0.2, sustain: 0.5, release: 1 } }).toDestination();
+            const cardSynth = new Tone.NoiseSynth({ noise: { type: 'pink' }, envelope: { attack: 0.001, decay: 0.1, sustain: 0 } }).toDestination();
+            const winSynth = new Tone.PolySynth(Tone.Synth, { oscillator: { type: 'fatsawtooth' }, envelope: { attack: 0.1, decay: 0.5, sustain: 0.2, release: 0.5 } }).toDestination();
+            const loseSynth = new Tone.Synth({ oscillator: { type: 'fatsquare' }, envelope: { attack: 0.1, decay: 1, sustain: 0, release: 0.1 } }).toDestination();
+            const errorSynth = new Tone.Synth({ oscillator: { type: 'square' }, envelope: { attack: 0.01, decay: 0.2, sustain: 0, release: 0.1 } }).toDestination();
+
+            sfx = {
+                move: () => moveSynth.triggerAttackRelease('G5', '32n'),
+                dice: () => diceSynth.triggerAttackRelease('0.1'),
+                cash: () => { cashSynth.triggerAttackRelease('C5', '8n'); setTimeout(() => cashSynth.triggerAttackRelease('G5', '8n'), 100); },
+                buy: () => { buySynth.triggerAttackRelease('C4', '8n'); setTimeout(() => buySynth.triggerAttackRelease('G4', '8n'), 120); },
+                rent: () => { rentSynth.triggerAttackRelease('G3', '8n'); setTimeout(() => rentSynth.triggerAttackRelease('C3', '8n'), 120); },
+                jail: () => { jailSynth.triggerAttack('A5'); setTimeout(() => jailSynth.triggerRelease(), 800); },
+                card: () => cardSynth.triggerAttackRelease('0.2'),
+                win: () => winSynth.triggerAttackRelease(['C4', 'E4', 'G4', 'C5'], '1s'),
+                lose: () => loseSynth.frequency.rampTo('C3', 0.8),
+                error: () => errorSynth.triggerAttackRelease('F#3', '8n'),
+            };
+
+            // Create soft background music with reverb
+            const reverb = new Tone.Reverb({ decay: 5, wet: 0.4 }).toDestination();
+            const musicSynth = new Tone.Synth({
+                oscillator: { type: 'triangle' },
+                envelope: { attack: 0.8, decay: 0.4, sustain: 0.2, release: 4 }
+            }).connect(reverb);
+            musicSynth.volume.value = -30; // Very quiet
+
+            backgroundMusic = new Tone.Pattern((time, note) => {
+                musicSynth.triggerAttackRelease(note, '2n', time);
+            }, ["C3", "G3", "E3", "A3"], "randomWalk");
+            
+            backgroundMusic.interval = '1n';
+            Tone.Transport.bpm.value = 80;
+            Tone.Transport.start();
+            
+            audioReady = true;
+        }
+
+        function playSound(soundName) {
+            if (audioReady && !Tone.Master.mute && sfx[soundName]) {
+                sfx[soundName]();
+            }
+        }
+
+        document.getElementById('mute-btn').addEventListener('click', () => {
+            Tone.Master.mute = !Tone.Master.mute;
+            document.getElementById('mute-btn').textContent = Tone.Master.mute ? '🔇' : '🔊';
+            if (!Tone.Master.mute && backgroundMusic.state !== 'started') {
+                 backgroundMusic.start(0);
+            }
+        });
+
         // --- GAME DATA ---
         const boardSpaces = [
             { name: "GO", type: "go", emoji: "🦊" },
@@ -333,7 +399,15 @@
         const loseScreen = document.getElementById('lose-screen');
 
         // --- INITIALIZATION ---
-        function startGame(aiCount) {
+        async function startGame(aiCount) {
+            // Initialize audio on the first user interaction
+            if (!audioReady) {
+                await Tone.start();
+                console.log('Audio context started');
+                initAudio();
+                backgroundMusic.start(0);
+            }
+
             const playerName = document.getElementById('player-name').value || 'You';
             const playerEmoji = document.getElementById('emoji-selector').value;
 
@@ -467,10 +541,11 @@
             if (!spaceEl || !tokenEl) return;
             const offset = player.id * 8 - 12;
             
-            let moveDelay = BASE_MOVE_DELAY / gameSpeed;
-            if (gameSpeed === 0.5) moveDelay *= 0.75; // 25% faster move at 0.5x speed
+            // Adjust animation speed based on game speed setting
+            let moveDelay = BASE_MOVE_DELAY / (gameSpeed === 0.5 ? 1 : gameSpeed);
 
             if (animate) {
+                playSound('move');
                 tokenEl.style.transitionDuration = `${moveDelay / 1000}s`;
                 tokenEl.classList.add('token-hop');
                 setTimeout(() => {
@@ -491,11 +566,11 @@
                 player.position = (player.position + 1) % boardSpaces.length;
                 updatePlayerTokenPosition(player);
                 
-                let moveDelay = BASE_MOVE_DELAY / gameSpeed;
-                if (gameSpeed === 0.5) moveDelay *= 0.75; // 25% faster move at 0.5x speed
-                await sleep(moveDelay);
+                // Adjust delay between hops based on game speed
+                let hopInterval = BASE_MOVE_DELAY / (gameSpeed === 0.5 ? 1.0 : gameSpeed);
+                await new Promise(resolve => setTimeout(resolve, hopInterval));
 
-                if (player.position === 0 && i < steps -1) { // Passed GO mid-move
+                if (player.position === 0 && i < steps -1) { 
                      updatePlayerMoney(player, 200, false);
                      showAutoModal("Passed GO", `${player.name} collected $200.`, 1200);
                      await sleep(1200);
@@ -521,15 +596,18 @@
         function handleSpecialSpace(player, space) {
             switch(space.type) {
                 case "go-to-jail":
+                    playSound('jail');
                     showAutoModal("Go to Jail!", `${player.name} is now in jail.`, 1200, () => { goToJail(player); nextTurn(); });
                     break;
                 case "tax":
+                    playSound('rent');
                     showAutoModal("Tax", `${player.name} paid $${space.amount} in tax.`, 1200, () => {
                         updatePlayerMoney(player, -space.amount, true);
                         if(!player.isBankrupt) nextTurn();
                     });
                     break;
                 case "chance": case "opportunity":
+                    playSound('card');
                     drawCard(player, space.type === 'chance' ? chanceCards : opportunityCards, space.name);
                     break;
                 default:
@@ -539,6 +617,11 @@
         
         // --- PROPERTY & MONEY ---
         function updatePlayerMoney(player, amount, canGoBankrupt) {
+            if (amount > 0) {
+                playSound('cash');
+            } else if (amount < 0) {
+                playSound('rent');
+            }
             player.money += amount;
             showMoneyAnimation(player.id, amount);
             if (canGoBankrupt && player.money < 0) {
@@ -554,35 +637,22 @@
 
         function promptBuyProperty(player, space) {
             if (player.money < space.price) {
+                playSound('error');
                 showAutoModal("Not Enough Money", `${player.name} can't afford ${space.name}.`, 1200, nextTurn);
                 return;
             }
             if (player.isAI) {
-                // Aggressive AI: Will almost always buy if they can afford it.
                 const canAfford = player.money >= space.price;
-                
-                // They will only have a small chance of declining if the purchase would leave them with critically low cash.
                 const criticallyLowCash = 150; 
                 
                 if (canAfford) {
-                    if (player.money - space.price > criticallyLowCash) {
-                        // If they have a good cash reserve after buying, they always buy.
-                        buyProperty(player, space);
-                        showAutoModal("AI Purchase", `${player.name} bought ${space.name} for $${space.price}.`, 1200, nextTurn);
+                    if (player.money - space.price > criticallyLowCash || Math.random() < 0.85) {
+                         buyProperty(player, space);
+                         showAutoModal("AI Purchase", `${player.name} bought ${space.name} for $${space.price}.`, 1200, nextTurn);
                     } else {
-                        // If cash will be low, there's still a very high chance they buy it anyway.
-                        // This makes them aggressive and willing to take risks.
-                        if (Math.random() < 0.85) { // 85% chance to buy even with low cash
-                             buyProperty(player, space);
-                             showAutoModal("AI Purchase", `${player.name} bought ${space.name} for $${space.price}.`, 1200, nextTurn);
-                        } else {
-                             // This is the rare case where they decline.
-                             showAutoModal("AI Declines", `${player.name} decided not to buy ${space.name} to preserve cash.`, 1200, nextTurn);
-                        }
+                         showAutoModal("AI Declines", `${player.name} decided not to buy ${space.name}.`, 1200, nextTurn);
                     }
                 } else {
-                    // This case should not be hit because of the check at the function start.
-                    // Included as a fallback.
                      showAutoModal("Not Enough Money", `${player.name} can't afford ${space.name}.`, 1200, nextTurn);
                 }
             } else {
@@ -594,6 +664,7 @@
         }
 
         function buyProperty(player, space) {
+            playSound('buy');
             const newProperty = {...space, houses: 0};
             player.properties.push(newProperty);
             updatePlayerMoney(player, -space.price, true);
@@ -639,7 +710,6 @@
 
             while (player.money < 0) {
                 let soldSomething = false;
-                // 1. Sell houses evenly from most expensive groups
                 let propertiesWithHouses = player.properties.filter(p => p.houses > 0).sort((a,b) => b.houseCost - a.houseCost);
                 if (propertiesWithHouses.length > 0) {
                     const propToSellFrom = propertiesWithHouses[0];
@@ -652,14 +722,11 @@
                     continue;
                 }
 
-                // 2. Sell properties
                 if (player.properties.length > 0) {
-                    // Sell properties that are not part of a set first, cheapest first
                     let propToSell = player.properties
                         .filter(p => !p.group || !hasFullSet(player, p.group))
                         .sort((a,b) => a.price - b.price)[0];
                     
-                    // If no single properties, break up a set, cheapest first
                     if (!propToSell) {
                          propToSell = player.properties.sort((a,b) => a.price - b.price)[0];
                     }
@@ -684,6 +751,7 @@
         }
 
         function handleBankruptcy(player) {
+            playSound('lose');
             player.isBankrupt = true;
             document.getElementById(`player-${player.id}-token`).classList.add('hidden');
             player.properties.forEach(p => p.houses = 0);
@@ -704,11 +772,12 @@
                 if (hasFullSet(player, groupName)) {
                     const group = propertiesByGroup[groupName];
                     const houseCost = group[0].houseCost;
-                    while (player.money > houseCost * 2.5) { // Be a bit more conservative
+                    while (player.money > houseCost * 2.5) {
                          const minHouses = Math.min(...group.map(p => p.houses));
                          if (minHouses >= 5) break;
                          let propertyToBuildOn = group.find(p => p.houses === minHouses);
                          if (propertyToBuildOn) {
+                             playSound('buy');
                              updatePlayerMoney(player, -houseCost, false);
                              propertyToBuildOn.houses++;
                              showAutoModal("AI Builds", `${player.name} built a ${propertyToBuildOn.houses === 5 ? 'hotel' : 'house'} on ${propertyToBuildOn.name}.`, 1200);
@@ -735,7 +804,6 @@
                     if (owner && !hasFullSet(owner, group.groupName)) {
                         const offerPrice = Math.round(targetProperty.price * (1.2 + Math.random() * 0.5));
                         
-                        // AI is more likely to trade if it needs cash or the offer is good
                         if ((owner.money < 400 && offerPrice > targetProperty.price * 1.2) || offerPrice > targetProperty.price * 1.5) {
                              showAutoModal("AI Trade Offer", `${player.name} offers to buy ${targetProperty.name} from ${owner.name} for $${offerPrice}.`, 1500, null, { modalType: 'trade' });
                              await sleep(1500);
@@ -842,7 +910,7 @@
 
         // --- UTILITY FUNCTIONS ---
         function sleep(ms) {
-            return new Promise(resolve => setTimeout(resolve, ms));
+            return new Promise(resolve => setTimeout(resolve, ms / gameSpeed));
         }
 
         function setGameSpeed(speed) {
@@ -883,6 +951,7 @@
 
         function endGame(activePlayers) {
             gameActive = false;
+            if (backgroundMusic) backgroundMusic.stop();
             if (activePlayers.length === 1 && !activePlayers[0].isAI) {
                 triggerWin();
             } else {
@@ -897,6 +966,7 @@
         });
 
         function animateDice(d1, d2, callback) {
+            playSound('dice');
             let count = 0;
             const interval = setInterval(() => {
                 drawDice(diceContainer[0], Math.floor(Math.random() * 6) + 1);
@@ -956,7 +1026,6 @@
         function showAutoModal(title, body, duration = 1200, callback, options = {}) {
             showModal(title, body, [], { ...options, noCloseButton: true });
             let finalDuration = duration / gameSpeed;
-            if (gameSpeed === 0.5) finalDuration += 1000; // Add 1 second for 0.5x speed
 
             setTimeout(() => {
                 modal.classList.add('hidden');
@@ -979,6 +1048,7 @@
                     player.getOutOfJailFreeCards--;
                     endJail();
                 } else {
+                    playSound('error');
                     showAutoModal("Not Enough Money", "You don't have $50 to leave jail.", 1200, nextTurn);
                 }
             };
@@ -1011,7 +1081,6 @@
         function drawCard(player, cardDeck, type) {
             const card = cardDeck[Math.floor(Math.random() * cardDeck.length)];
             
-            // Color code money amounts in the card text
             let displayText = card.text.replace(/\$(\d+)/g, (match, amount) => {
                 if (card.text.includes("Collect") || card.text.includes("Receive") || card.text.includes("get") || card.text.includes("refund") || card.text.includes("won") || card.text.includes("dividend") || card.text.includes("matures")) {
                     return `<span class="font-bold text-green-400">${match}</span>`;
@@ -1025,7 +1094,6 @@
                 const originalPosition = player.position;
                 card.action(player, players);
                 if (player.isBankrupt) return;
-                // If player position changed, handle the new space after a delay
                 if (player.position !== originalPosition) { 
                     setTimeout(handleLandedSpace, 200 / gameSpeed);
                 } 
@@ -1089,10 +1157,11 @@
             const player = players[currentPlayerIndex];
             const propertyGroup = player.properties.filter(p => p.group === groupName);
             const houseCost = propertyGroup[0].houseCost;
-            if (player.money < houseCost) { return; }
+            if (player.money < houseCost) { playSound('error'); return; }
             const minHouses = Math.min(...propertyGroup.map(p => p.houses));
             let propertyToBuildOn = propertyGroup.find(p => p.houses === minHouses);
             if (propertyToBuildOn && propertyToBuildOn.houses < 5) {
+                playSound('buy');
                 updatePlayerMoney(player, -houseCost, false);
                 propertyToBuildOn.houses++;
                 updateAllUI();
@@ -1104,9 +1173,10 @@
             const propertyGroup = player.properties.filter(p => p.group === groupName);
             const houseCost = propertyGroup[0].houseCost;
             const maxHouses = Math.max(...propertyGroup.map(p => p.houses));
-             if (maxHouses === 0) return;
+             if (maxHouses === 0) { playSound('error'); return; }
             let propertyToSellFrom = propertyGroup.find(p => p.houses === maxHouses);
             if(propertyToSellFrom) {
+                playSound('cash');
                 updatePlayerMoney(player, houseCost / 2, false);
                 propertyToSellFrom.houses--;
                 updateAllUI();
@@ -1115,14 +1185,28 @@
         };
         window.sellProperty = (propertyName) => {
             const player = players[currentPlayerIndex];
+            const property = player.properties.find(p => p.name === propertyName);
+            if (!property) return;
+
+            const sellPrice = Math.floor(property.price / 2);
+            const body = `Are you sure you want to sell <b>${propertyName}</b> for <span class="text-yellow-400">$${sellPrice}</span>?`;
+            
+            showModal("Confirm Sale", body, [
+                { text: "Confirm", className: 'bg-red-600', action: () => confirmSellProperty(propertyName) },
+                { text: "Cancel", className: 'bg-gray-500' }
+            ]);
+        };
+        window.confirmSellProperty = (propertyName) => {
+            const player = players[currentPlayerIndex];
             const propertyIndex = player.properties.findIndex(p => p.name === propertyName);
             if(propertyIndex > -1) {
                 const property = player.properties[propertyIndex];
                 const sellPrice = Math.floor(property.price / 2);
+                playSound('cash');
                 updatePlayerMoney(player, sellPrice, false);
                 player.properties.splice(propertyIndex, 1);
                 updateAllUI();
-                showManagePropertiesModal(player);
+                showManagePropertiesModal(player); // Refresh the manage modal
             }
         };
 
@@ -1143,6 +1227,7 @@
         }
 
         function triggerWin() {
+            playSound('win');
             gameActive = false;
             gameContainer.classList.add('hidden');
             winScreen.classList.remove('hidden');
@@ -1151,6 +1236,7 @@
         }
 
         function triggerLose() {
+            playSound('lose');
             gameActive = false;
             gameContainer.classList.add('hidden');
             loseScreen.classList.remove('hidden');
@@ -1170,6 +1256,7 @@
         function executeTrade(buyer, seller, property, price) {
             if (buyer.money < price) {
                 if (!buyer.isAI) {
+                    playSound('error');
                     showAutoModal("Trade Failed", "You cannot afford this trade.", 1500);
                 }
                 return;
@@ -1180,7 +1267,8 @@
             const tradedProperty = seller.properties[propIndex];
             seller.properties.splice(propIndex, 1);
             buyer.properties.push(tradedProperty);
-
+            
+            playSound('buy');
             updatePlayerMoney(buyer, -price, !buyer.isAI);
             updatePlayerMoney(seller, price, false);
             
@@ -1276,7 +1364,7 @@
             } else {
                 showModal("Choice", `Pay a $${amount} fine or take a Chance card?`, [
                     {text: `Pay $${amount}`, className: 'bg-red-500', action: () => { updatePlayerMoney(player, -amount, true); nextTurn(); }},
-                    {text: 'Take Chance', className: 'bg-yellow-500', action: () => { modal.classList.add('hidden'); drawCard(player, chanceCards, 'Chance'); }}
+                    {text: 'Take Chance', className: 'bg-yellow-500', action: () => { modal.classList.add('hidden'); playSound('card'); drawCard(player, chanceCards, 'Chance'); }}
                 ]);
             }
         }
